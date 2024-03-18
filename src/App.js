@@ -1,71 +1,105 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "./components/Header";
-import Tasks from "./components/Tasks"
-import AddTaskTasks, { AddTask } from "./components/AddTask"
+import Tasks from "./components/Tasks";
+import AddTask from "./components/AddTask";
 
-
+const BASE_URL = 'http://127.0.0.1:5000';
 
 function App() {
-  const[showAddTask, setShowAddTask] = useState(false)
-  const [tasks, setTasks] = useState([
-    {
-        id: 1,
-        text: 'Doctors Appointment',
-        day: 'Feb 5th at 2:30pm',
-        reminder: true,
-    },
-    {
-        id: 2,
-        text: 'Meeting at school Appointment',
-        day: 'Feb 6th at 1:30pm',
-        reminder: true,
-    },
-    {
-        id: 3,
-        text: 'Groceries',
-        day: 'Feb 5th at 2:30pm',
-        reminder: false,
-    },
-])
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [tasks, setTasks] = useState([]);
 
-//Add Task
-const addTask = (task) => {
-  const id = Math.floor(Math.random () * 10000) + 1
-  console.log(id)
-  const newTask = {id, ...task}
-  setTasks([...tasks, newTask])
-}
+  // Add Task
+  const addTask = async (task) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(task)
+      });
 
-//Delete Task
-const deleteTask = (id) => {
-  setTasks(tasks.filter((task) => task.id !== id))
-}
+      if (!response.ok) {
+        throw new Error('Failed to add task');
+      }
 
-//Toggle Reminder
-const toggleReminder = (id) => {
-  setTasks(
-    tasks.map((task) => 
-    task.id === id ? { ...task, reminder: 
-      !task.reminder } : task
-    )
-  )
-}
+      // After adding a task, fetch the updated list of tasks
+      fetchTasks();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Delete Task
+  const deleteTask = async (id) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
+
+      // After successful deletion, fetch the updated list of tasks
+      fetchTasks();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Toggle Reminder
+  const toggleReminder = async (id) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reminder: !tasks.find(task => task.id === id).reminder }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle reminder');
+      }
+
+      // After toggling reminder, fetch the updated list of tasks
+      fetchTasks();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Fetch Tasks
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/tasks`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+      const data = await response.json();
+      setTasks(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
   return (
     <div className="container">
-      <Header 
-        onAdd={() => setShowAddTask
-        (!showAddTask)} showAdd={showAddTask} />
-        {showAddTask && <AddTask onAdd={addTask} />}
-        {tasks.length > 0 ? (
-          <Tasks tasks={tasks} 
-          onDelete={deleteTask} 
-          onToggle={toggleReminder}/>
+      <Header onAdd={() => setShowAddTask(!showAddTask)} showAdd={showAddTask} />
+      {showAddTask && <AddTask onAdd={addTask} />}
+      {tasks.length > 0 ? (
+        <Tasks tasks={tasks} onDelete={deleteTask} onToggle={toggleReminder} />
       ) : (
         'No tasks to show'
-        )}
+      )}
     </div>
   );
 }
-
 
 export default App;
